@@ -1,4 +1,124 @@
-#### wrote code for the equation above 
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Sep  2 08:31:43 2025
+
+@author: Grace
+"""
+
+#### Lecture 1 - Aug ?
+
+# Error in the Derivative
+
+
+using classical definition of derivative: f'(x) = (f(x+dx)-f(x))/dx
+
+then taylor expand both f(x+dx) and f(x)
+substitute back into equation and get: f'(x) = f'(x) + dx^2 f''/2 + ...
+
+but now try: f'(x) = (f(x+dx)-f(x-dx))/(2*dx) 
+again taylor expand and sub back in and now the dx^2 terms dissapear due to sign
+
+f'(x) = f'(x) + dx^2 f'''/6 + ...
+
+error in taylor series decreases by factor of 100 - this answer is way more accurate
+*have to worry about round off error because now is dominating
+-> want to make dx larger
+
+so for single precision would want like 0.1 and for double would be like 10e5
+
+summary: free to pick dx whatever we want and so to get more accurate we choose 
+        dx to be the cubed root fo the third derivative (equalling sides of the 
+        equation) rather than the root of the second derivative
+
+- see code showing this called deriv_class.py
+- most accurate we can get is 10e-10
+
+
+#### Lecture 2 - Sept 2
+
+# Polynomial Interpolation/ Integration (class slides posted)
+
+## Interpolation
+
+
+if have a function given at certain points and asked to find the function 
+value y at some other x value
+- interpolation is when the new value is between already given function values
+- extrapolation is when new value is outside of given function values
+
+solutions:
+- laziest way is to choose closest neighbour
+- draw straight lines between points (also lazy)
+- piecewise quadratic (not good usually)
+**we want a smooth function a.k.a. something that can be defined by a taylor series
+
+taylor series reminder
+f(x) = 
+
+- cubic (needs 4 points) use edge points and so thye match up on center point
+    and is smooth
+        -> see code from class cubic_attempt_class_py but indexing didn't work
+        - cubic works well!
+        - what about higher order?
+
+I want to write a polynomial that goes through n points
+- can write a polynomial that is 0 at specified number of points
+    - ex. (x0 - x1)(x0 - x2)(..)(x0 - xn-1) which is 1 at x0 and 0 at all other values
+say we have function y(x) = y0@x0, y1@x1, ... = y0P0 + y1P1 + y2P2 + ...
+- could be defined by sum of polynomials P which go through zero except for point
+    that they 'own' and so they wiggle a lot
+    - see images in lecture slides
+
+note that which many high order polynomials there can be large effects of small
+errors and so not well behaved
+
+checkin: cubic worked ok and was continuous. did nto need fit for each 
+interpolated point, could store every interval and coeff
+- no need evenly spaced given function values
+
+
+### Cubic Splines
+
+
+our cubic fit, was it continuous? we did not check :( 
+
+splines: forces function and first n order derivatievs to be continuous 
+        (usually 1st and 2nd)
+        - so second deriv needs to match right and left neighbours (usually set to 0)
+        - cubic most common to be a spline
+        - see code cubic_spline_class.py
+        - really fancy is Bplines found in scipy.interpolate
+
+
+### Rational Functions
+
+poles review (omfg complex analysis)
+
+ex. function: f(x) 1/ (2 + x^2) which is not analytic at x = i
+- taylor series work in the complex plane (since function is analyic)
+- interpolation with spline will fail at some point
+
+f(x) = P(x)/(1 + qq(x))
+
+if i use a polynomial and extrapolate to long distances then they will move and 
+change very steeply when out of the range we fitted them in
+
+basically have will have 
+
+(P0 + P1 x + P2 x^2 + .. ) / ( 1 + qq1 x + qq2 x^2 + ..) = y(x)
+rearrange to 
+P0 + P1 x + P2 x^2 ... - ( 1 + qq1 x + qq2 x^2 + ..) = y(x)
+
+now have a matrix and can solve for all unknowns 
+(if have that same amount of function values)
+
+
+
+
+#### Lecture 3 - Sept 4
+
+wrote code for the equation above 
 
 f(x) = P(x)/(1 + qq(x))
 
@@ -31,7 +151,7 @@ summary: rational functions often behave better outside the region of specified 
 note: rational functions are much less supported than polyfits
 
 
-# Integration
+## Integration
 
 
 Interpolation and integration are closely couples
@@ -116,4 +236,6 @@ legendre fitting: y_i = sum(c_j P_j(x_i))
 
 see code legendre_weights.py
 - can see it essentially matches simpson's rule (up to order 2)
+
+
 
