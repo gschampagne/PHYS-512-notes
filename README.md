@@ -229,6 +229,110 @@ legendre fitting: y_i = sum(c_j P_j(x_i))
 see code legendre_weights.py
 - can see it essentially matches simpson's rule (up to order 2)
 
+#### Lecture 4 - Sept 9
 
+## Legendre Integration
+
+we were trying to make a general way of numerically integrating arbitrary taylor series polynomial order
+
+want to use Legendre polynomials since
+- they are always bounded
+- integral between any two legendre polynomials is 0 unless they are the same
+    - essentially just have to find P0 coefficient for all info about integral
+    - Can find set of weights to find all info
+
+saw briefly with rational functions that we can use matrix if have same amount of variables as equations and use matrix inverse to get coeff.
+
+say we have bound set of points with dx being spacing between the points
+- if function is a constant x=1 what should integral across region of multiple points be?
+    - each interval between points has an area of dx
+
+want a set of weights such that Σ w_i f_i dx = integral estimate
+- would need Σ w_i = 4 if have 5 points, if had three points Σ w_i = 2, etc
+    - can check with simpson's rule (matches)
+
+wrote code for this called legendre_weights_class.py
+- when trying to integrate for a 4th order need 4 intervals (5 points) and would need 4n+1 points
+- when using integrate_leg(np.exp,0,1,0.086,2) the output is 13
+    - says that the closest we can get to odd number of points with 0.86 spacing is 13 points
+
+- integrate_leg(np.exp,0,1,0.086,2): error = 4.6e-07
+    - decrease dx by fatcor of 4, dx = 0.02: error = 1.5e-09 as expected
+    - raise order from 2 to 4, error = 2.97e-13 showing that the function is smooth (well described by a taylor series)
+
+things like lorentz which look smooth but are nto defined by taylor series 
+- trying code with lorentz to integrate, dx = 0.2 still shows small error
+    - when increase order from 2 to 4, error gets quite worse (~300x worse to be exact)
+
+the right thing to do to integrate depends on what you are integrating
+
+# Error estimates
+
+we have done things with analytic error estimates since we have know what integral is and are able to compare
+
+when we don't know the answer, how do we estimate the error??
+- if in a region that is well described by taylor series we know how error will change 
+    - say we compare f(4dx)&f(2dx) agaisnt f(2dx)&f(dx) we know that the error at WORST will be the difference between the estimates
+    - also to check if in a happy taylor series, going from f(4dx) to f(2dx) should tell us rough the change of going from f(2dx) to f(dx)
+
+simplest case: our error is difference between 2dx and dx for simpson's rule
+- does this take extra function evaluations to do? 
+    - can do simpson's rule using every function point
+    - can also do simpson's rule using only every third point?
+    - can get estimate with same points we had
+    - can also do first, last and center point and check the difference of the errors (due to number of points) and if they follow that of 16x as we saw before then this can be described by a taylor series
+- usually give error estimate to be difference between f(2dx) and f(dx) though is probably more accurate but may not be
+
+see code legendre_error.py
+- take best answer and answer with half as many poitns and use as error estimate
+- we see that often the estimate is larger than the true error but never smaller
+
+look at weights for simpson's rule
+- get_weights(2): array([0.33333333, 1.33333333, 0.33333333])
+- get_weights(4): array([0.31111111, 1.42222222, 0.53333333, 1.42222222, 0.31111111])
+- get_weights(6): array([0.29285714, 1.54285714, 0.19285714, 1.94285714, 0.19285714, 1.54285714, 0.29285714])
+- get_weights(50), see plot below
+![alt text](images/legendre_weights.png)
+sum of the weights is ~50 for 50th order
+- weights are oscillating between large and small meaning we will not get an accurate number due to round off error 
+    - will only get (best case) order 10^5 which we get much better from other methods
+
+# More on Integration
+
+### Romberg Integration
+
+another way to get high order
+- if i integrate from -a to a then only even terms survive in the integral
+- if have n estimates of area with varying dx, can combine coarse estimates to kill off n terms in even error series giving accuracy of dx^2n
+- more stable than higher order polynomial weights
+
+remember, derived simpson's with the linear integrations to cancel taylor series error terms (combining two estimates to cancel higher order error terms)
+
+can use this with scipy.integrate
+- scipy.integrate.romb = integral from preevaluated points
+- scipy.integrate.romberg = integral from function
+ 
+### Indefinite Integral
+Handy trick: integrate from a to b f(x) dx = int from 1/b to 1/a f(1/t) t^-2 dt for t = 1/x
+- can now set say b to inf since 1/b = 0
+- as long as function falls off quickly enough
+
+say have 1/sqrt(x), our code for inetgrate_leg will not work becuase end point integrates to inf
+- can use scipy.integrate.quad instead
+
+### Variable step size
+have used fixed dx so far but often not what we wanna do
+
+return to lorenztian
+- poles at +-i
+- can use large dx anywhere but in the range near x=0 where we see the peak in the function
+- could integrate in 3 parts
+
+we could first try something simple and keep track of the error via error estimate
+- first try simpson's rule form -500 to 500 with 2 interval and 1 interval and if error is small then we are done!
+- of error is not small, shrink try from -500,0 and 0,500
+- keep dividing into intervals until our error is good enough (smaller than whatever we define our bound ot be)
+
+see code integrate_adaptive_class.py
 
 
