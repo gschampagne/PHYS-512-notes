@@ -240,6 +240,7 @@ want to use Legendre polynomials since
 - integral between any two legendre polynomials is 0 unless they are the same
     - essentially just have to find P0 coefficient for all info about integral
     - Can find set of weights to find all info
+![alt text](images/legendrepolynomials.png)
 
 saw briefly with rational functions that we can use matrix if have same amount of variables as equations and use matrix inverse to get coeff.
 
@@ -337,3 +338,140 @@ see code integrate_adaptive_class.py
 
 
 #### Lecture 5 - Sept 11
+
+last week: had written integrator that used less function evaluations yay but did not work properly with gaussian for large interval
+
+** important **
+we were integrating a gaussian with an offset from -20 to 20 which worked but when integrated form -25 to 15 it was wrong (sad)
+- our adaptive integrator does a single simpson's step and evaluates with 3 points and 5 points and if the integrals match (enough) then we are done
+- [-20,20] the points were (-20,-10,0,10,20) and since there is a point at 0 the integrator knows about the spike
+- [-25, 15] the points are (-25, -15, -5, 5, 15) and so does not see spike and integral is very wrong
+to fix this we just ened to make sure it uses the peak -> split into two integrals
+
+### Gaussian Quadrature
+problem: polynomials not quite orthogonal on evenly spaced points
+legendre polynomials are not quite orthogonal when evaluating evenly spaced points
+- cna get factor of 2 or higher order integration with same number of evaluations by picking x points carefully
+- useful to calculated w(x)f(x) where w(x) is lowk weird like f(x)/sqrt(x)
+- can look up gaussian quad weights
+
+### Chebyshev Polynomials
+class of polynomials defined by T_n = cos(n arccos(x)) on -1 to 1
+- T_0 = 1, T_1 = x
+- recurrance relation is T_(n+1) = 2x T_n - T_(n-1)
+
+useful properties:
+- max and min are 1 and -1 (since cosine) and roughly evenly spread throughout interval
+
+![alt text](images/Chebyshev_Polynomials.png)
+
+say i did taylor expansion but used chebyshev polynomials as base funtion and wnated to drop last term in taylor series
+
+f(x) = Σn T_n(x) C_n
+but change to f(X) = Σ(n-1) T_n(x) C_n
+
+the biggest error i would induce would be last coefficient
+- for legendre at edges it is larger so would have larger error
+- for chebyshev, the peaks are all 1 and -1, i basically spread error uniform across interval
+    - if want to make function where error is same everywhere
+
+derivation:
+    T_n = cos(n arcos(x)), T_0 = 1, T_1 = x (as long as x between 1,-1)
+
+    what is T_(n+1) = cos((n+1) arccos(x))
+                    = cos(n arcos(x) - sin(n arcos(x)) sin( arcos(x))
+    T_(n-1) = cos((n-1) arcos(x))
+    if do same expansion get 
+            = cos(n arcos(x)) + sin(n arcos(x)) sin( arcos(x))
+    T_(n+1) + T_(n-1) = 2x T_n
+    T_(n+1) = 2x T_n - T_(n-1) ** The important one
+
+    T_2 = 2x^2 -1
+    T_3 = 4x^3 - 2x - x
+        = 4x^3 - 3x
+    if i were ot generate T_4 the leading term would be ax^4 + ....
+    T_5 = 16x^5 + ...
+    T_20 = 2^20 x^20 + stuff
+
+    coefficients keep getting larger but then when we go through all fo it they carefully cancel out to get numebrs between -1 and 1
+
+do we wanna be differencing arge numebrs to get -1 and 1?? NO computer will be sad and take a lot of work to write out polynomials and cancel
+- use recurrance relationship!!
+
+see code: cheb_class.py to see cheb polynomails and cheb fit
+- need ot make sure we get matrix correct to get coeff
+
+T_o(x_0)    T_1(x_0)        c_0         y_0
+T_0(x_1)    ...             c_1     
+T_0(x_2)    ...             ...
+
+we have T * c = y so can get coeff via c = T^-1 * y
+- using code we do 20th order cheb fit and see the coeffs get very small very quickly until we get to the roundoff error
+- in code we added a fit anf an evaluation and then plotted the error
+![alt text](images/cheb_err.png)
+error is kind of evenly distributed (not vastly different anywhere else)
+- better way of expressing functions with error small as possible everywhere for least amount of work
+
+look at cheb_expand.py where we see how a least squares fit goes crazy at end points which would be wildly incorrect if someone evaluated at endpoints
+
+# ODEs
+problem: before, given y(x) we were trying to undertsand how it would behave in the future
+
+now we have y(x_0) and want to find y(x_0 + h) given dy/dx = f(x,y)
+- harder than numerical integration because we don't know how to evaluate dy/dx along the path - that depends on the unknown value of y
+
+basic problem:
+    before we had dy/dx = f'(x), now we have dy/dx = f(x,y)
+
+    * in ODE everyone uses h instead of dx lol...
+    y_(n+1) = y_n + h(x_n,y_n)
+    we want ot try and integrate by splitting the are ainto rectancles iwth the top left edge agaisnt the true function line
+
+see code: ode_zeroth_class.py
+- we solve for simple ode dy/dx = -y and we see that error stars at zero and goes to about 10^-3 ish
+![alt text](images/ode_err.png)
+- if double the number of integrals (n) we would expect error to decrease by a factor of 2
+    - this makes sense since we are at order 2? maybe
+    - means we have to do twice as much more for factor fo 2 more accuracy.. not optimal
+
+### Runge-Kutta
+usually people use 4th order but we will derive 2nd roder since is hard :(
+
+want to be clever about fuction evaluations to cancel higher order terms in taylor series
+- but need to make rough guess of what y is doing to do what we want
+
+y_(n+1) = y_n + a k_1 + b k_2
+k_1 = h f(x_n, y_n)
+k_2 = h f(x_n + α, y_n + β k_1)
+goal: figure out a,b, and alpha and beta to match second order
+
+y(x + h) = y(x) + h y'(x) + h^2/2 y''(x) + ... the taylor series expansion
+remember y'(x) = f(x,y)
+y(x + h) = y(x) + h f(x,y) + h^2/2 d/dx(f(x,y)) + ...
+         = y(x) + h f(x,y) + h^2/2 (∂f/∂x + ∂/∂x (f dy/dx)) + h^2/2 (∂f/∂x + f ∂f/∂y)
+
+to match up (matching firts order derivative)
+h f a + h f b = h f   -->   a + b = 1
+second order term
+b α h^2 = h^2/2    -->   α b = 1/2, β b = 1/2 same for beta term
+
+now have 4 unknowns and 3 equations
+a + b = 1       assume a = b = 1/2
+α b = 1/2       assume α = β = 1
+β b = 1/2
+we are assuming by approximating using the same rectangles we had split our integrla into except instead of drawing.a horizontal line at the top it is a slanted line leading to second order accuracy
+- another sensible choice is to pick b = 1 where α = β = 1/2
+    - don't use left edge at all but use alpha and beta to do half steps 
+formally free to pick any choice
+
+see code: rk2.py
+- we do second order rk and get error decrease by 50x with only twice as much work
+- if double number of steps we get factor of 4 more accurate
+- also did other version with half a step and got same error
+
+with rk4.py our error went down by crazy (with only 4x work)
+- fourth order method
+- doing twice a smuch work gives 16x mroe accurate answer
+
+can do this for higher order equations
+- if y is a vector and have system of equations and get vector dy/dx and can evaluate all the functions and get exact same things
