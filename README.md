@@ -336,3 +336,4 @@ we could first try something simple and keep track of the error via error estima
 see code integrate_adaptive_class.py
 
 
+#### Lecture 5 - Sept 11
