@@ -601,3 +601,4 @@ see code called linfit_svd_class.py
 
 problem: singular values that were small became large in inverse
 - added mask in code
+- better but not right thing to do we will see next lecture
