@@ -475,3 +475,123 @@ with rk4.py our error went down by crazy (with only 4x work)
 
 can do this for higher order equations
 - if y is a vector and have system of equations and get vector dy/dx and can evaluate all the functions and get exact same things
+
+
+#### Lecture 6 - Sept 16
+
+#### Lecture 7 - Sept 18
+
+# Linear Least Squares
+
+PDF = Π_i exp(-1/2 (x_i - μ_i)^2 / σ_i^2)
+errors on measurments are gaussian distributed
+- CLM tell sus we will probs end up w gaussian anyways with many samples
+- can solve analytically yay
+
+can take -2 Log(PDF/2) = Σ ((x_i - μ_i)^2 / σ_1^2)  -->  χ^2  --> δχ^2
+
+given two models what is the relative probability that would give us the data observed
+- looking at ratio of the PDFs after taking the log becomes the difference
+- can get everything we need to know from two models from the chi^2
+
+if δχ^2 is high probs not a good fit to the data
+if δχ^2 = 1, PDF = exp(-1/2 χ^2) so 
+    PDF1/PDF2 = exp(-1/2 χ_1^2) / exp(-1/2 χ_2^2)
+              = exp(-1/2 δχ^2)
+    would bet that neither model is preferred
+if δχ^2 = 100
+    PDF1/PDF2 = = exp(-1/2 δχ^2) ~ e^-50 = 1 in a trillion of quadrillion
+    everytime the bad model gives rise to the data, the other model is 1 in quad to give rise to the data
+
+all of the complication for two mdoels is χ^2
+    - best fit is the minimum χ^2
+
+** now treat x as a vector
+x --> d , mu --> mu (vector), σ_i^2 --> N_i --> 1/σ_i^2 --> N^-1
+
+(d - μ)^T N^-1 (d-μ) which is equal to Σ ((x_i - μ_i)^2 / σ_1^2) 
+- μ = Σ A_ij m_j = A m
+
+say we fit a line to data (y = mx + b)
+      x_0
+y = ( x_1 ) ( b ).  with goal to find b and m that minimize χ^2
+      x_2     m
+      ...
+
+if have μ = A m then χ^2 --> (d - Am)^T N^-1 (d - Am)
+- to minimize take the deirvative and set to 0
+- to take derivative of matrix it is the exatc same if you keep order
+
+∂/∂m = m --> m + δm
+     for δm --> 0, ((d - A (m + δm))^T N^-1 (d - A (m + δm))) / δm  - x_0 
+    = (d - A (m + δm))^T N^-1 (d - A (m + δm)) - A δm N^-1 (d - A (m))
+        (d - A (m)) N^-1 δm + A δm N^-1 (A δm)
+    note that χ^2 is just a scalar after differentiation
+
+    (δm^T A^T N^-1 (d - A m)) / δm = A^T N^-1 (d - A m) which is just a scalar where we have picked out ith element
+    - for a given parameter the derivative is a scalar
+    --> -2 A^T N^-1 (d - A m) which is full vector if do not pull out an element
+    differentiate above: -A^T N^-1 (d - Am) - (d - Am)^T N^-1 A
+                        = -2 A^T N^-1 (d-Am) = gradient of χ^2
+
+want to find value of m to minimize χ^2
+-2 A^T N^-1 (d-Am) = 0
+A^T N^-1 d - A^T N^-1 Am = 0
+A^T N^-1 A m = A^T N^-1 d    this is our linear least squares 
+
+what does A look like? 
+- if have 1000 data points there are 1000 rows of A
+- if fitting a line have 2 parameters so vector has two entries so A would be 1000x2
+- in general A is not square so cannot multiple the linear least squares by A^-1 on the left to cancel out the matrix
+
+say d has 1000 entries (vector) then N would be square (1000x1000) and A (1000x2) and A^T (2x1000), m is a vector with 2 entries, and A^T N^-1 A is 2x2 whihc is square and can be inverted
+- m = (A^T N^-1 A)^-1 A^T N^-1 d.  ** very important
+- be aware, maybe is invertible analytically but not on computer
+
+see code: linfit_class.py
+- add random noise to a polynomial and calculate m
+- where if we have all sigma = 1 then N becomes the identity matrix and goes away
+- if noise is the same everywhere can just ignore N
+
+if you are fitting a polynomial of unknwon order, how do you know order?
+- we do not want extra parameter since simplest model is best
+- chi^2 naturally goes down ~1 for each added parameter however will not see drastic change is chi^2 if parameter is not necessary
+- increasing the order should alwyas do as least as well as previous answer
+- when fit is trying to follow the noise it is not good and we do not like
+- went form 15 to 10th order the χ^2 went up by 300 
+    - happened because computer had roundoff error since is not evaluating analytically
+    - the inverse makes us nervous for roundoff error
+
+what is happening with an inverse?
+    - we know A^T N^-1 A is square but also using (ABC)^T = C^T B^T A^T we get A^T N^-1 A = A^T N^-1 A a.k.a. our matrix is symmetric!
+    for symmetric matric and want to understand the inverse we want to take the eigen values and eigen vectors (eigen vectors orthogonal for hermitian matrix)
+
+    have some generic matrix B and B -> B^-1 and B = v λ v^T
+    - B^-1 = (v^T)^-1 λ^-1 v^T
+           = v n-1 λ^-1 if wnat to invert matrix just invert eigen values
+    say smallest eigen value is much smaller than largest, when inverted becomes VERY large and would expect inverse to not behave numerically
+
+    r_cond = λ_max / λmin = 'small'
+
+see same code as before (at bottom)
+- maybe check because code not working for any other order than 5
+    - his code as called lin_cond_class.py
+- should really not have a negative eigenvalue and that indicates things are NOT working
+
+want to understand where our problems are coming from
+    start again but without noise
+    A^T A m = A^T d
+    SVD(A) = USV^T numpy for some reason does not put transpose but there should be?
+    in our case U^T U = I meaning u is orthogonal but is rectangular is A is rectangular
+    S is diagonal (S = S^T), V is square and orthogonal (V V^T = V^T V = I)
+    * can decompose any matrix this way
+
+    V^T S U^T U S V^T = V^T S U^T d
+    V^T S^2 V = V^T S U^T d
+    have squared eigenvalues of S menaing the spread of singular values in A doubles
+    S^2 V m = S U^T d
+    V m = S^-1 U^T d
+    m = V^T S^-1 U^T d ** also important and called pseudo inverse of matrix
+    A (twidle ~) = V^T S^-1 U^T
+
+if have A m = d then least squares solution is m = A (twidle ~) d
