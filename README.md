@@ -595,3 +595,9 @@ want to understand where our problems are coming from
     A (twidle ~) = V^T S^-1 U^T
 
 if have A m = d then least squares solution is m = A (twidle ~) d
+see code called linfit_svd_class.py
+- again check his code (same name) because did not work
+- but is the same i think as the answer we got previously with the polynomial fit
+
+problem: singular values that were small became large in inverse
+- added mask in code
