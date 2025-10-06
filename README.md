@@ -479,6 +479,10 @@ can do this for higher order equations
 
 #### Lecture 6 - Sept 16
 
+rk4 is analogy of simpson's rule 
+- in real life would use adaptive step sizes
+
+
 #### Lecture 7 - Sept 18
 
 # Linear Least Squares
@@ -603,3 +607,189 @@ problem: singular values that were small became large in inverse
 - added mask in code
 - better but not right thing to do we will see next lecture
 
+#### Lecture 8 - Sept 23
+we found that increasing teh order when we went to far was bad and made the fit bad
+- see code polyfit_high.py where we fit with order 23 and it is not good wheras with order <10 it was fine
+![alt text](images/polyfithigh.png)
+reason this happens is the condition number of the matrix we are trying to invert
+- large and small eigenvalues has a very wide spread and so whe trying to take inverse (1/eigen value) then the ones that are ~0 now are dominated by roundoff error and blow up
+- in dbl precision if is near 10^-16 or 10^16 you are dominated by roundoff error
+
+we saw to get rid of this issue could use SVD
+- squares condition number A
+- can analytically cancel one power of singular values
+- could push order a little higher but not crazy higher
+
+also could maybe fix with pseudo inverse (pinv)
+- takes all infinities by replacing with zeros
+- not great but not bad
+- in a perfect world if have 20 order polynomial, would need something like 20 degrees of freedom and so would need like 20 coeff
+    - if setting to zero then losing degrees of freedom
+    - you want the freedom to model data
+
+## Different Polynomal Basis
+could we have geusse dthese polynomial fits would be bad?
+
+when we use x^n as our basis set then can make things with other functions almost identical
+
+ex. two functions y24 and yy24
+y22 = x**22
+y24 = x**24 
+y26 = x**26
+yy24 = (y22 + y26) / 2
+
+looks identical
+![alt text](images/polybases.png)
+
+if can make an almost identical basis function out of two basis functions then matrix will be almost singular
+- by choosing polynomials that we wrote this way we baked in that we would have singular problems
+- no way aorund this when writing as polynomials
+
+want to write a 24 order polynomial
+- right now have to way to do that
+- want to pick a basis function where cannot relate polynomials as we just did
+
+### Legendre polynomials (again)
+want to use legendre polynomials
+- since int(Pn Pm) = Cn delta_nm implies orthogonal 
+- stay well behaves when go to high order
+
+see code: legendre_rcond_class.py
+- gives legendre polynomials evaluated at x position up to specified order and then print largets singular value/smallest singular value
+- before went quickly to 10^16, this time we find:
+for order  5  condition is  3.3004280956740217
+for order  10  condition is  4.542409266354224
+for order  15  condition is  5.508389178334158
+for order  20  condition is  6.334155198722667
+for order  30  condition is  7.740928389754361
+for order  50  condition is  10.001645831829597
+for order  75  condition is  12.568756977268068
+for order  100  condition is  24.71556746484239
+- could fit 100th order poly and would lose two digits in polynomial to 14 digits of accuracy
+
+now see code: linfit_svd_leg_class.py
+- made one change: A = np.polynomial.legendre.legvander(x,order)
+- now can fit 25 order and reasonably goes through data
+![alt text](images/legpolyfit.png)
+chi^2 is: 2963.805287068053
+rcond is: 50.41881220658876
+
+- now try with order= 125
+    - for every extra parameter put in chi^2 should decrease by roughly 1 so by adding 100 order should decrease by roughly 100
+chi^2 is: 2841.859796002489
+rcond is: 254.64036538900177
+
+![alt text](images/legpolyfithigh.png)
+
+why does it wiggle? trying to now fit the noise
+- wiggles are probably not real :(
+
+what if we don't know what should we decide order to be
+- linear fitting is good after decide order (hyper parameter)
+- come back when we learn about machine learning
+
+summary: can go to high order when using a good basis
+
+### Chebyshev polynomials
+if care about smallest max error the use cheby chev
+
+## Ex. Amplifier gain
+how do we do real data with error bars?
+
+if i wanted to know how much gain at some frequency i could go look up frequency but that is not good idea generally due to noise
+- generally amplifier gain is smooth so will want to find the smooth curve to get value
+
+we don't have prior to what curve SHOULD look like
+- laziest thing to do: fit polynomial 
+
+see code: fit_tempdata_class.py
+- play around with order but stick with 5 for best fit but then look at error and decide on 8
+- also plot the difference between model and data to really see the best order for model
+![alt text](images/amplegfit.png)
+![alt text](images/noiseamp.png)
+
+now we want to get the actual error: < m - m_t > 
+- but we never know really what m_t is? 
+< d > = A m_t becuase on average data should fit the model 
+< d > = d_t
+A^T N^-1 A m = A^T N^-1 d
+A^T N^-1 A m_t = A^T N^-1 d_t
+(A^T N^-1 A)(m-m_t) = (A^T N^-1) (d-d_t)
+take average
+<(A^T N^-1 A)(m-m_t) = (A^T N^-1) (d-d_t)>
+but on average <(d-d_t)> = 0
+so on average < m - m_t > = 0
+- if estimating noise with data can sometimes get bias where <(d-d_t)> does not equal 0
+
+in summary < m - m_t > = 0 and is not interesting
+- sigma = sqrt(< d >), var = < d^2 >
+what we actually want is;
+< (m - m_t)(m - m_t)^T >
+< (m - m_t)^2 >
+
+so expand this
+A^T N^-1 A (m - m_t) = A^T N^-1 (d - d_t)
+let (d - d_t) = n
+(m - m_t) = (A^T N^-1 A)^-1 A^T N^-1 n
+< (m - m_t)(m - m_t)^T > = < (A^T N^-1 A)^-1 A^T N^-1 n n^T N^-1 A (A^T N^-1 A)^-1 >
+focus on n
+n n^T = n_i n_j
+will equal zero if i ad j are different, if i and j are the same is equal to sigma^2 for n_i
+- same as N since zero on off diagonals and sigma squared on diagonals
+
+= (A^T N^-1 A)^-1 A^T N^-1 N N^-1 A (A^T N^-1 A)^-1
+= (A^T N^-1 A)^-1 A^T N^-1 A (A^T N^-1 A)^-1
+= (A^T N^-1 A)^-1 = < (m - m_t)(m - m_t)^T >
+^^ very importnat
+- now can find expected parameters using covariance
+- can look at off diagonals to tell if paramters are correlated
+
+before could ignore noise is nosie was approx the smae everywhere
+- now need to make estimate of noise to be able to estimate parameter error properly
+
+looking bakc at data and code fit_tempdata_class.py
+- the noise looks approx constant so we take the sqrt of the noise
+- how to tell if noise is reasonable
+    - but your hand in center of spread, and your hand is rougly two sigma (if on projector)
+- now we found the estimate of error in our paramters
+
+in this particular case we care about uncertainty of model (less so of paramters) but i can get this from the parameters
+error in mdoel:
+(Am) uncertianty
+error in reconstructed model
+(A^(m - m_t)) ()^T A^(m - m_t)(m - m_t)^T A^T
+so can use A(A^T N^-1 A)^-1 A^T
+- put into code as: model_covar=A@par_covar@A.T
+- scatter on diagonal: model_sigma=np.sqrt(np.diag(model_covar))
+
+we can estimate uncertianty to be .05/400
+
+summary: can get all error we wnat using eq that minimized chi^2
+
+
+# Correlated Noise
+has assumed noise is independant among data points ... this is not usual
+- can get info on noise based on the neighbouring points (regular pattern)
+
+chi^2 = (d - A m)^T A^-1 (d - A m)
+throw in matrices that leave chi^2 unchanged
+
+A A^n = V^T V = I
+chi^2 = (d - A m)^T V^T V N^-1 V^T V (d - A m)
+chi^2 = (V d - V A m)^T V N^-1 V^T (V d - V A m)
+now define 
+ď = V d
+Ã = N A
+Ñ = V N V^T
+
+chi^2 = (ď - Ã m)^T Ñ^-1 (ď - Ã m)
+still mathimatically identical to the above, all we have done is rotate the basis
+- in general Ñ is no longer diagonal
+can prove <ñ_i ñ_j> = Ñ_ij
+
+can directly calculate Ñ_ij and so can work with data and model and life is ok
+
+
+#### Lecture 9 - Sept 25
+
+#### Lecture 10 - Sept 30
