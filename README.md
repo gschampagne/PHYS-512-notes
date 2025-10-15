@@ -791,5 +791,97 @@ can directly calculate Ñ_ij and so can work with data and model and life is ok
 
 
 #### Lecture 9 - Sept 25
+# Correlated Noise cont.
+<ñ_i ñ_j> = Ñ_ij
+so in rotated space get same chi^2 same eigenvalues etc.
+
+ex. say have something where when zoom out noise loks white but zoom in and is wiggly a bit
+- can see when a spike doesn't look like noise.. will see
+
+want to generate Ñ_ij
+ď = v d where  v is eigenvectors
+- want to generate data in uncorrelated space and multiply it by rotation matrix ot get correlated space
+- never really would need to go to uncorrelated space
+
+generate noise in uncorrelated space
+- noise matrix looks like Ñ = V N V^T so N is now eigenvalues of Ñ
+- Ñ = V Λ V^T not unique mapping but we are allowed to do
+- V is the rotational matrix
+- N_ii = sigma^2 i think> need to double check
+
+see code corrnoise_class.py
+- width controls wiggle width
+- cholesky is a lot faster to generate random noise
+- want to generate white noise as well that is uncorrelated (ex. a measurement error)
+
+d = d_corr - d_white
+-> sigma_ij = sigma delta_ij noise is same for every data point and unquoted between data points
+< d_i, d_j > = ?
+- correlated part gives N_ij correlated
+- white part gives sigma^2 delta_ij
+< d_corr, d_i > = 0
+< d_i, d_j > = N_corr + N_white
+whereever correlation matrix is almost 1 the points are almost teh same, whenevr is almost zero, points know nothing about eachother
+
+see code again, first plotted corr matrix with width = 20
+![alt text](images/corrmatrix.png)
+then plotted noise 
+![alt text](images/corrnoise.png)
+and can see that width of wiggles as almost width of band in matrix
+- number of wiggles should be about number of e (eigenvalues)
+
+see code corrnoise_white_class.py
+- npw generating N via NN = toeplitz(Nvec) where we checked and time to generate is now 3 orders of magnitude faster and is the same matrix
+    - times: 0.577 compared to 0.000793 seconds
+- added white noise whihcmade smooth curve now fuzzy
+![alt text](images/corrnoisewhite.png)
+- also adds a spike on the diagonal plot of the matrix
+
+can be even more efficient: Nvec[0] = Nvec[0] + white**2
+
+want to generate some signal (same code)
+- starting with width = 50 and skinny signal (gaussian added to data)
+![alt text](images/corrnoisesignal.png)
+blue is data without signal and orange is with signal
+
+trying again with larger width of noise
+![alt text](images/corrnoisesignal2.png)
+can clearly see where signal is compared to noise
+- want to find best fit amplitude
+    - found ~1 which is good cuz we put in 1
+    - found error of ~0.04 whihc seems reasonable
+- uncertainty in measurement is coming from the white noise term
+
+now have smaller width of noise (10) but also smaller white noise (0.001)
+![alt text](images/corrnoisesignal3.png)
+- definitly harder to see signal but code can somehow still get it exactly right... though erro shot up to 0.4 (was 0.002 with width 20 and white noise 0.001)
+
+then if make noise same width as signal now kind of impossible
+- through power of dealing w corr noise correctly, if can get noise right can get some really got results to get signal.. unelss signal looks a lot like noise
+
+# Non-linear fitting
+In general cannot write d = A m
+- most functions are non-linear
+
+for linear case can find global chi^2 in one step
+- generic non-linear function cannot find global minimum of chi^2, usually multiple and find best fo all of them
+
+one posisbility si to trust fall (assume tehre is global minimum) and find stepeest downhill diretcion, move to bottom, and find the minimum called steepest descent
+- usually not the only minimum
+- maybe do multiple times
+
+at any location, steepest descent of chi^2 is a gradient
+- is walk along until gradient is 0 (minimum)
+- means gradient is now perpendicular to direction i just took (since zero menas orthogonal)
+- now have to make right angle turn
+- menas: if don't start pointing towards minimum have to take a lot of right angle steps to move
+    - bad way of minimizing because gradient direction often not pointed towards minimum
+!! we will not do this it is bad!!
+
+next best thing: Newton's method
+## Newton's Method
+
+
+
 
 #### Lecture 10 - Sept 30
